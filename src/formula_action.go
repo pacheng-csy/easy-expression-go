@@ -284,3 +284,15 @@ func (f FormulaAction) MillSeconds(values ...any) interface{} {
 }
 
 /*-----------------Time---------------------------*/
+
+/*-----------------object---------------------------*/
+
+func (f FormulaAction) IsNull(values ...any) interface{} {
+	if reflect.ValueOf(values[0]).IsNil() {
+		return float64(1)
+	} else {
+		return float64(0)
+	}
+}
+
+/*-----------------object---------------------------*/

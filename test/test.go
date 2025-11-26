@@ -15,6 +15,28 @@ func TestParse(t *testing.T) {
 	assert.Equal(t, float64(1), expression.InterfaceToFloat64(value))
 }
 
+func NullTest(t *testing.T) {
+	expStr := "[ISNULL](obj)"
+	exp, _ := expression.CreateExpression(expStr)
+	dic := map[string]interface{}{
+		"obj": nil,
+	}
+	exp.LoadArgumentWithDictionary(dic)
+	value := exp.Execute()
+	assert.Equal(t, float64(1), expression.InterfaceToFloat64(value))
+}
+
+func EmptyStringTest(t *testing.T) {
+	expStr := "a==''"
+	exp, _ := expression.CreateExpression(expStr)
+	dic := map[string]interface{}{
+		"a": "",
+	}
+	exp.LoadArgumentWithDictionary(dic)
+	value := exp.Execute()
+	assert.Equal(t, float64(1), expression.InterfaceToFloat64(value))
+}
+
 func TestNegative(t *testing.T) {
 	expStr := "3 * -2"
 	exp, _ := expression.CreateExpression(expStr)
@@ -73,7 +95,7 @@ func TestArithmetic(t *testing.T) {
 
 func TestString(t *testing.T) {
 	expStr := "a * (b + c) > d & [Contains](srcText,text)"
-	dic := map[string]string{
+	dic := map[string]interface{}{
 		"a":       "3",
 		"b":       "1",
 		"c":       "2",
@@ -89,7 +111,7 @@ func TestString(t *testing.T) {
 
 func TestParams(t *testing.T) {
 	expStr := "a * (b + c) + 5 - (30 / (d - 2) % [SUM](1,2,3))"
-	dic := map[string]string{
+	dic := map[string]interface{}{
 		"a": "3",
 		"b": "1",
 		"c": "2",
@@ -103,7 +125,7 @@ func TestParams(t *testing.T) {
 
 func TestDateCompare(t *testing.T) {
 	expStr := "'2024-05-27' == a"
-	dic := map[string]string{
+	dic := map[string]interface{}{
 		"a": "2024-05-27",
 	}
 	exp, _ := expression.CreateExpression(expStr)
@@ -114,7 +136,7 @@ func TestDateCompare(t *testing.T) {
 
 func TestDateMoreThan(t *testing.T) {
 	expStr := "'2024-05-27' > a"
-	dic := map[string]string{
+	dic := map[string]interface{}{
 		"a": "2024-05-26",
 	}
 	exp, _ := expression.CreateExpression(expStr)
@@ -125,7 +147,7 @@ func TestDateMoreThan(t *testing.T) {
 
 func TestDateLessThan(t *testing.T) {
 	expStr := "'2024-05-27' < a"
-	dic := map[string]string{
+	dic := map[string]interface{}{
 		"a": "2024-05-26",
 	}
 	exp, _ := expression.CreateExpression(expStr)

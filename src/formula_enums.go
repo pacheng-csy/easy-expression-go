@@ -9,7 +9,7 @@ type KeyValuePairElementType struct {
 // KeyValuePairElementString 定义
 type KeyValuePairElementString struct {
 	Key   string
-	Value string
+	Value interface{}
 }
 
 type ElementType int
@@ -116,7 +116,8 @@ const (
 	FunctionMinutes        FunctionType = 16
 	FunctionSeconds        FunctionType = 17
 	FunctionMillSeconds    FunctionType = 18
-	FunctionCustomer       FunctionType = 19
+	FunctionIsNull         FunctionType = 19
+	FunctionCustomer       FunctionType = 100
 )
 
 func (f FunctionType) String() string {
@@ -159,6 +160,8 @@ func (f FunctionType) String() string {
 		return "Seconds"
 	case FunctionMillSeconds:
 		return "MillSeconds"
+	case FunctionIsNull:
+		return "IsNull"
 	case FunctionCustomer:
 		return "Customer"
 	default:

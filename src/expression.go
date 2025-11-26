@@ -25,9 +25,9 @@ type Expression struct {
 	//包含关键字的完整表达式
 	SourceExpressionString string
 	//数据值
-	DataString string
+	DataString interface{}
 	//当前层级实际值
-	RealityString string
+	RealityString interface{}
 	//运算符
 	Operators []*Operator
 	//函数类型
@@ -65,7 +65,7 @@ func CreateExpression(expressionStr string) (*Expression, error) {
 
 /****************************************load****************************************************/
 
-func (e *Expression) LoadArgumentWithDictionary(keyValues map[string]string) []KeyValuePairElementString {
+func (e *Expression) LoadArgumentWithDictionary(keyValues map[string]interface{}) []KeyValuePairElementString {
 	result := make([]KeyValuePairElementString, 0)
 	e.loadArgumentWithDictionary(keyValues, &result, e.ElementType == ElementFunction)
 	return result
@@ -84,18 +84,24 @@ func (e *Expression) LoadArgument() {
 	}
 }
 
-func (e *Expression) loadArgumentWithDictionary(keyValues map[string]string, result *[]KeyValuePairElementString, zeroInit bool) {
+func (e *Expression) loadArgumentWithDictionary(keyValues map[string]interface{}, result *[]KeyValuePairElementString, zeroInit bool) {
 	if e.DataString != "" {
 		if e.ElementType == ElementFunction {
 			// 处理函数参数替换
 			allParams := e.GetAllParams()
 			for _, param := range allParams {
 				if v, exists := keyValues[param.Key]; exists {
-					replacement := "0"
-					if v != "" {
-						replacement = v
+
+					if v == nil {
+						e.DataString = nil
+					} else {
+						replacement := "0"
+						if v != "" {
+							replacement = v.(string)
+						}
+						e.DataString = strings.ReplaceAll(e.DataString.(string), param.Key, replacement)
 					}
-					e.DataString = strings.ReplaceAll(e.DataString, param.Key, replacement)
+
 				}
 			}
 			e.RealityString = e.DataString
@@ -106,13 +112,15 @@ func (e *Expression) loadArgumentWithDictionary(keyValues map[string]string, res
 			}
 		} else {
 			// 处理普通数据节点
-			if v, exists := keyValues[e.DataString]; exists {
-				if v == "" && zeroInit {
+			if v, exists := keyValues[e.DataString.(string)]; exists {
+				if v != nil && v == "" && zeroInit {
 					e.RealityString = "0"
+				} else if v == nil {
+					e.RealityString = nil
 				} else {
-					e.RealityString = v
+					e.RealityString = v.(string)
 				}
-				*result = append(*result, KeyValuePairElementString{Key: e.DataString, Value: e.RealityString})
+				*result = append(*result, KeyValuePairElementString{Key: e.DataString.(string), Value: e.RealityString})
 			} else {
 				e.RealityString = e.DataString
 			}
@@ -133,7 +141,7 @@ func (e *Expression) GetAllParams() []KeyValuePairElementType {
 	if e.ElementType == ElementData && len(e.ExpressionChildren) == 0 {
 		// 处理基础数据节点
 		results = append(results, KeyValuePairElementType{
-			Key:   strings.Replace(e.DataString, "\\", "", -1),
+			Key:   strings.Replace(e.DataString.(string), "\\", "", -1),
 			Value: e.ElementType,
 		})
 	} else {
@@ -159,7 +167,7 @@ func (e *Expression) getChildrenAllParams(parent *Expression) []KeyValuePairElem
 				childrenResults = append(childrenResults, childExp.getChildrenAllParams(childExp)...)
 			} else {
 				// 处理函数参数
-				paramList := strings.Split(childExp.DataString, ",")
+				paramList := strings.Split(childExp.DataString.(string), ",")
 				for _, param := range paramList {
 					childrenResults = append(childrenResults, KeyValuePairElementType{
 						Key:   strings.Replace(param, "\\", "", -1),
@@ -176,7 +184,7 @@ func (e *Expression) getChildrenAllParams(parent *Expression) []KeyValuePairElem
 			}
 
 			childrenResults = append(childrenResults, KeyValuePairElementType{
-				Key:   strings.Replace(childExp.DataString, "\\", "", -1),
+				Key:   strings.Replace(childExp.DataString.(string), "\\", "", -1),
 				Value: paramType,
 			})
 		}
@@ -583,6 +591,8 @@ func GetFunctionType(key string) (executeType FunctionType, function func(Formul
 		return FunctionSeconds, FormulaAction.Seconds
 	case "millseconds":
 		return FunctionMillSeconds, FormulaAction.MillSeconds
+	case "isnull":
+		return FunctionIsNull, FormulaAction.IsNull
 	}
 	panic(key + " 函数未定义")
 }
@@ -858,7 +868,7 @@ func (e *Expression) executeNode(childExp *Expression) (interface{}, error) {
 					return nil, fmt.Errorf("at %s: 函数 %v 形参 %s 映射到实参 %s 错误",
 						e.SourceExpressionString, childExp.FunctionType, childExp.DataString, childExp.RealityString)
 				}
-				dataArray := strings.Split(childExp.RealityString, ",")
+				dataArray := strings.Split(childExp.RealityString.(string), ",")
 				for _, item := range dataArray {
 					paramList = append(paramList, item)
 				}
@@ -871,7 +881,7 @@ func (e *Expression) executeNode(childExp *Expression) (interface{}, error) {
 			FunctionContains, FunctionContainsExcept, FunctionEquals,
 			FunctionStartWith, FunctionEndWith, FunctionDifferent,
 			FunctionDays, FunctionHours, FunctionMinutes,
-			FunctionSeconds, FunctionMillSeconds:
+			FunctionSeconds, FunctionMillSeconds, FunctionIsNull:
 
 			var paramsList []interface{}
 			if e.countNonDataChildren(childExp) != 0 {
@@ -880,8 +890,10 @@ func (e *Expression) executeNode(childExp *Expression) (interface{}, error) {
 					paramsList = append(paramsList, childrenResults...)
 				}
 			} else {
-				if childExp.RealityString != "" {
-					items := strings.Split(childExp.RealityString, ",")
+				if childExp.RealityString == nil {
+					paramsList = nil
+				} else if childExp.RealityString != "" {
+					items := strings.Split(childExp.RealityString.(string), ",")
 					for _, item := range items {
 						paramsList = append(paramsList, item)
 					}
@@ -911,7 +923,10 @@ func (e *Expression) countNonDataChildren(exp *Expression) int {
 	return count
 }
 
-func convert2ObjectValue(tag string, sourceExpressionString string) (interface{}, error) {
+func convert2ObjectValue(tag interface{}, sourceExpressionString string) (interface{}, error) {
+	if tag == nil {
+		return nil, nil
+	}
 	switch tag {
 	case "true":
 		return 1.0, nil
@@ -922,8 +937,8 @@ func convert2ObjectValue(tag string, sourceExpressionString string) (interface{}
 	case "0":
 		return 0.0, nil
 	default:
-		if strings.HasSuffix(tag, "%") {
-			percentStr := strings.TrimSuffix(tag, "%")
+		if strings.HasSuffix(tag.(string), "%") {
+			percentStr := strings.TrimSuffix(tag.(string), "%")
 			percentResult, err := strconv.ParseFloat(percentStr, 64)
 			if err != nil {
 				return nil, fmt.Errorf("at %s: %s 不是数值类型", sourceExpressionString, tag)
@@ -931,19 +946,19 @@ func convert2ObjectValue(tag string, sourceExpressionString string) (interface{}
 			return percentResult * 0.01, nil
 		}
 
-		if result, err := strconv.ParseFloat(tag, 64); err == nil {
+		if result, err := strconv.ParseFloat(tag.(string), 64); err == nil {
 			return result, nil
 		}
 
-		if t, err := time.Parse(time.RFC3339, tag); err == nil {
+		if t, err := time.Parse(time.RFC3339, tag.(string)); err == nil {
 			return t, nil
 		}
 
 		// Try other common date formats if RFC3339 fails
-		if t, err := time.Parse("2006-01-02", tag); err == nil {
+		if t, err := time.Parse("2006-01-02", tag.(string)); err == nil {
 			return t, nil
 		}
-		if t, err := time.Parse("2006-01-02 15:04:05", tag); err == nil {
+		if t, err := time.Parse("2006-01-02 15:04:05", tag.(string)); err == nil {
 			return t, nil
 		}
 
@@ -1040,13 +1055,13 @@ func (e *Expression) getNewChildren(startIndex int, count int) []*Expression {
 }
 
 func buildChildren(expressions []*Expression, operators []*Operator) Expression {
-	var dataString = expressions[0].DataString
+	var dataString = expressions[0].DataString.(string)
 	if expressions[0].ElementType == ElementFunction {
 		dataString = expressions[0].SourceExpressionString
 	}
 
 	for i := 1; i < len(expressions); i++ {
-		childStr := expressions[i].DataString
+		childStr := expressions[i].DataString.(string)
 		if expressions[i].ElementType == ElementExpression {
 			childStr = expressions[i].SourceExpressionString
 		}
