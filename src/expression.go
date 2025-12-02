@@ -97,7 +97,7 @@ func (e *Expression) loadArgumentWithDictionary(keyValues map[string]interface{}
 					} else {
 						replacement := "0"
 						if v != "" {
-							replacement = v.(string)
+							replacement = fmt.Sprintf("%v", v)
 						}
 						e.DataString = strings.ReplaceAll(e.DataString.(string), param.Key, replacement)
 					}
@@ -118,7 +118,7 @@ func (e *Expression) loadArgumentWithDictionary(keyValues map[string]interface{}
 				} else if v == nil {
 					e.RealityString = nil
 				} else {
-					e.RealityString = v.(string)
+					e.RealityString = fmt.Sprintf("%v", v)
 				}
 				*result = append(*result, KeyValuePairElementString{Key: e.DataString.(string), Value: e.RealityString})
 			} else {
@@ -782,7 +782,7 @@ func executeChildren(exp *Expression) []interface{} {
 			break
 		case UnEquals:
 			if !isTime(result) && !isTime(value) {
-				if InterfaceToFloat64(result) != InterfaceToFloat64(value) {
+				if result != value {
 					result = 1
 				} else {
 					result = 0

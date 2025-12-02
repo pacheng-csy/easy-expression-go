@@ -26,6 +26,18 @@ func NullTest(t *testing.T) {
 	assert.Equal(t, float64(1), expression.InterfaceToFloat64(value))
 }
 
+func NotTest(t *testing.T) {
+	expStr := "!((![ISNULL](a)) && a != '' && (([ISNULL](b)) || b == '') || ((![ISNULL](b)) && b != '' && (([ISNULL](a)) || a == '')))"
+	exp, _ := expression.CreateExpression(expStr)
+	dic := map[string]interface{}{
+		"a": 3,
+		"b": nil,
+	}
+	exp.LoadArgumentWithDictionary(dic)
+	value := exp.Execute()
+	assert.Equal(t, float64(0), expression.InterfaceToFloat64(value))
+}
+
 func EmptyStringTest(t *testing.T) {
 	expStr := "a==''"
 	exp, _ := expression.CreateExpression(expStr)

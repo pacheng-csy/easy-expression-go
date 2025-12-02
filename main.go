@@ -15,6 +15,7 @@ func main() {
 		{"TestParse", test.TestParse},
 		{"TestNegative", test.TestNegative},
 		{"NullTest", test.NullTest},
+		{"NotTest", test.NotTest},
 		{"EmptyStringTest", test.EmptyStringTest},
 		{"TestLogic", test.TestLogic},
 		{"TestMutipleFunction", test.TestMutipleFunction},
